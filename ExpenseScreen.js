@@ -19,6 +19,10 @@ export default function ExpenseScreen() {
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
 
+  const [filter, setFilter] = useState("all");
+  const [total, setTotal] = useState(0);
+  const [categoryTotals, setCategoryTotals] = useState({}); 
+
   const loadExpenses = async () => {
     const rows = await db.getAllAsync(
       'SELECT * FROM expenses ORDER BY id DESC;'
@@ -41,9 +45,11 @@ export default function ExpenseScreen() {
       return;
     }
 
+    const today = new Date().toISOString().split("T")[0];
+
     await db.runAsync(
-      'INSERT INTO expenses (amount, category, note) VALUES (?, ?, ?);',
-      [amountNumber, trimmedCategory, trimmedNote || null]
+      'INSERT INTO expenses (amount, category, note, date) VALUES (?, ?, ?, ?);',
+      [amountNumber, trimmedCategory, trimmedNote || null, today]
     );
 
     setAmount('');
@@ -59,6 +65,33 @@ export default function ExpenseScreen() {
     loadExpenses();
   };
 
+  function applyFilter(expenses) {
+  if (filter === "all") return expenses;
+
+  const now = new Date();
+
+  if (filter === "week") {
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+
+    return expenses.filter(e => {
+      const d = new Date(e.date);
+      return d >= weekStart;
+    });
+  }
+
+  if (filter === "month") {
+    return expenses.filter(e => {
+      const d = new Date(e.date);
+      return (
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear()
+      );
+    });
+  }
+
+  return expenses;
+}
 
   const renderExpense = ({ item }) => (
     <View style={styles.expenseRow}>
@@ -81,7 +114,8 @@ export default function ExpenseScreen() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           amount REAL NOT NULL,
           category TEXT NOT NULL,
-          note TEXT
+          note TEXT,
+          date TEXT NOT NULL
         );
       `);
 
@@ -121,8 +155,14 @@ export default function ExpenseScreen() {
         <Button title="Add Expense" onPress={addExpense} />
       </View>
 
+      <View style={{ flexDirection: "row", justifyContent: "space-around", marginBottom: 16 }}>
+        <Button title="All" onPress={() => setFilter("all")} />
+        <Button title="This Week" onPress={() => setFilter("week")} />
+        <Button title="This Month" onPress={() => setFilter("month")} />
+      </View>
+
       <FlatList
-        data={expenses}
+        data={applyFilter(expenses)}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderExpense}
         ListEmptyComponent={
