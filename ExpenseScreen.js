@@ -24,27 +24,31 @@ export default function ExpenseScreen() {
   const [categoryTotals, setCategoryTotals] = useState({});
   const [editingExpense, setEditingExpense] = useState(null);
 
+  const [error, setError] = useState(null);
+
   const loadExpenses = async () => {
     const rows = await db.getAllAsync(
       'SELECT * FROM expenses ORDER BY id DESC;'
     );
     setExpenses(rows);
   };
+
   const addExpense = async () => {
     const amountNumber = parseFloat(amount);
-
-    if (isNaN(amountNumber) || amountNumber <= 0) {
-      // Basic validation: ignore invalid or non-positive amounts
-      return;
-    }
-
     const trimmedCategory = category.trim();
     const trimmedNote = note.trim();
 
     if (!trimmedCategory) {
-      // Category is required
+      setError("Category is required.");
       return;
     }
+
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      setError("Enter a valid amount.");
+      return;
+    }
+
+    setError(null);
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -109,6 +113,16 @@ export default function ExpenseScreen() {
     if (!editingExpense) return;
 
     const updated = editingExpense;
+
+    if (!updated.category.trim()) {
+      alert("Category cannot be empty.");
+      return;
+    }
+
+    if (!updated.amount || isNaN(updated.amount) || updated.amount <= 0) {
+      alert("Enter a valid amount.");
+      return;
+    }
 
     await db.runAsync(
       `UPDATE expenses
@@ -198,6 +212,12 @@ export default function ExpenseScreen() {
           onChangeText={setNote}
         />
         <Button title="Add Expense" onPress={addExpense} />
+
+        {error && (
+          <Text style={{ color: "red", marginTop: 6, textAlign: "center" }}>
+            {error}
+          </Text>
+        )}
       </View>
 
       <View style={{ flexDirection: "row", justifyContent: "space-around", marginBottom: 16 }}>
