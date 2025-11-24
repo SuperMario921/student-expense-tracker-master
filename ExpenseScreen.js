@@ -21,7 +21,7 @@ export default function ExpenseScreen() {
 
   const [filter, setFilter] = useState("all");
   const [total, setTotal] = useState(0);
-  const [categoryTotals, setCategoryTotals] = useState({}); 
+  const [categoryTotals, setCategoryTotals] = useState({});
 
   const loadExpenses = async () => {
     const rows = await db.getAllAsync(
@@ -92,6 +92,17 @@ export default function ExpenseScreen() {
 
   return expenses;
 }
+  function calculateTotals(filtered) {
+    const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0);
+    setTotal(totalAmount);
+
+    const catTotals = {};
+    filtered.forEach(e => {
+      catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+    });
+
+    setCategoryTotals(catTotals);
+  }
 
   const renderExpense = ({ item }) => (
     <View style={styles.expenseRow}>
@@ -124,6 +135,12 @@ export default function ExpenseScreen() {
 
     setup();
   }, []);
+
+  useEffect(() => {
+    const filtered = applyFilter(expenses);
+    calculateTotals(filtered);
+  }, [expenses, filter]);
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -159,6 +176,22 @@ export default function ExpenseScreen() {
         <Button title="All" onPress={() => setFilter("all")} />
         <Button title="This Week" onPress={() => setFilter("week")} />
         <Button title="This Month" onPress={() => setFilter("month")} />
+      </View>
+
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+          Total: ${total.toFixed(2)}
+        </Text>
+
+        <Text style={{ color: "#fff", marginTop: 8, fontSize: 16, fontWeight: "600" }}>
+          By Category:
+        </Text>
+
+        {Object.entries(categoryTotals).map(([cat, amt]) => (
+        <Text key={cat} style={{ color: "#9ca3af", fontSize: 14 }}>
+          {cat}: ${amt.toFixed(2)}
+        </Text>
+       ))}
       </View>
 
       <FlatList
