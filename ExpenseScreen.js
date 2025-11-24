@@ -22,6 +22,7 @@ export default function ExpenseScreen() {
   const [filter, setFilter] = useState("all");
   const [total, setTotal] = useState(0);
   const [categoryTotals, setCategoryTotals] = useState({});
+  const [editingExpense, setEditingExpense] = useState(null);
 
   const loadExpenses = async () => {
     const rows = await db.getAllAsync(
@@ -104,6 +105,27 @@ export default function ExpenseScreen() {
     setCategoryTotals(catTotals);
   }
 
+  const saveEdit = async () => {
+    if (!editingExpense) return;
+
+    const updated = editingExpense;
+
+    await db.runAsync(
+      `UPDATE expenses
+       SET amount = ?, category = ?, note = ?
+       WHERE id = ?`,
+       [
+        parseFloat(updated.amount),
+        updated.category.trim(),
+        updated.note || null,
+        updated.id
+       ]
+    );
+
+    setEditingExpense(null);
+    loadExpenses();
+  };
+
   const renderExpense = ({ item }) => (
     <View style={styles.expenseRow}>
       <View style={{ flex: 1 }}>
@@ -112,10 +134,16 @@ export default function ExpenseScreen() {
         {item.note ? <Text style={styles.expenseNote}>{item.note}</Text> : null}
       </View>
 
+    <View style={{ flexDirection: "row" }}>
+      <TouchableOpacity onPress={() => setEditingExpense(item)}>
+        <Text style={[styles.delete, { marginRight: 16, color: "#60a5fa" }]}>✎</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={() => deleteExpense(item.id)}>
         <Text style={styles.delete}>✕</Text>
       </TouchableOpacity>
     </View>
+  </View>
   );
 
   useEffect(() => {
@@ -193,6 +221,45 @@ export default function ExpenseScreen() {
         </Text>
        ))}
       </View>
+
+      {editingExpense && (
+        <View style={{
+          backgroundColor: "#1f2937",
+          padding: 16,
+          borderRadius: 12,
+          marginBottom: 20,
+          borderWidth: 1,
+          borderColor: "#374151"
+       }}>
+          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold", marginBottom: 12 }}>
+            Edit Expense
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            value={String(editingExpense.amount)}
+            keyboardType="numeric"
+            onChangeText={(v) => setEditingExpense({ ...editingExpense, amount: v })}
+         />
+
+          <TextInput
+            style={styles.input}
+            value={editingExpense.category}
+            onChangeText={(v) => setEditingExpense({ ...editingExpense, category: v })}
+         />
+
+          <TextInput
+            style={styles.input}
+            value={editingExpense.note || ""}
+            onChangeText={(v) => setEditingExpense({ ...editingExpense, note: v })}
+          />
+
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12 }}>
+            <Button title="Cancel" color="#9ca3af" onPress={() => setEditingExpense(null)} />
+            <Button title="Save" onPress={saveEdit} />
+          </View>
+        </View>
+      )}
 
       <FlatList
         data={applyFilter(expenses)}
