@@ -8,10 +8,13 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Dimensions,
 } from 'react-native';
+
+import { PieChart } from 'react-native-chart-kit';
 import { useSQLiteContext } from 'expo-sqlite';
 
-export default function ExpenseScreen() {
+export default function ExpenseScreen({ navigation }) {
   const db = useSQLiteContext();
 
   const [expenses, setExpenses] = useState([]);
@@ -25,6 +28,21 @@ export default function ExpenseScreen() {
   const [editingExpense, setEditingExpense] = useState(null);
 
   const [error, setError] = useState(null);
+
+  const screenWidth = Dimensions.get("window").width;
+
+  const chartColors = [
+    "#FF6384", "#36A2EB", "#FFCE56",
+    "#4BC0C0", "#9966FF", "#FF9F40",
+  ];
+
+  const chartData = Object.entries(categoryTotals).map(([cat, amt], i) => ({
+    name: cat,
+    amount: amt,
+    color: chartColors[i % chartColors.length],
+    legendFontColor: "#fff",
+    legendFontSize: 14,
+  }));
 
   const loadExpenses = async () => {
     const rows = await db.getAllAsync(
@@ -187,6 +205,41 @@ export default function ExpenseScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.heading}>Student Expense Tracker</Text>
+
+      <Button
+        title="Open Full Chart View"
+        onPress={() => navigation.navigate("Charts", { categoryTotals })}
+        color="#60a5fa"
+      />
+
+      {Object.keys(categoryTotals).length > 0 && (
+        <View style={{ marginBottom: 20 }}>
+          <Text
+            style={{
+              color: "#fff",
+              fontSize: 18,
+              fontWeight: "bold",
+              marginBottom: 10,
+            }}
+          >
+            Spending by Category
+          </Text>
+
+          <PieChart 
+            data={chartData}
+            width={screenWidth - 16} 
+            height={240}
+            chartConfig={{
+              color: () => "#fff",
+              labelColor: () => "#fff",
+            }}
+            accessor="amount"
+            backgroundColor="transparent"
+            paddingLeft="16"
+            absolute
+          />
+        </View>
+      )}
 
       <View style={styles.form}>
         <TextInput
